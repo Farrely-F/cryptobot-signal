@@ -2,10 +2,27 @@ import TelegramBot from "node-telegram-bot-api";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ccxt from "ccxt";
 import dotenv from "dotenv";
+import http from "http";
 
 dotenv.config();
 
-// Verify environment variables
+// Create a simple health check server
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(
+    JSON.stringify({
+      status: 200,
+      message: "bot up and running",
+    })
+  );
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Health check server running on port ${PORT}`);
+});
+
+// Rest of your existing bot code
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("❌ TELEGRAM_BOT_TOKEN is missing");
   process.exit(1);
@@ -32,7 +49,7 @@ bot.on("polling_error", (error) => {
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 // Initialize exchange (using Binance as an example)
 const exchange = new ccxt.binance();

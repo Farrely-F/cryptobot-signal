@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "build": "echo 'Build step not required'"
+    "build": "npm install"
   },
   "engines": {
     "node": ">=18.0.0"
