@@ -22,7 +22,6 @@ server.listen(PORT, () => {
   console.log(`Health check server running on port ${PORT}`);
 });
 
-// Rest of your existing bot code
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("❌ TELEGRAM_BOT_TOKEN is missing");
   process.exit(1);
@@ -54,14 +53,25 @@ const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 // Initialize exchange (using Binance as an example)
 const exchange = new ccxt.binance();
 
-// Trading pairs to monitor
+// Available trading pairs
 const tradingPairs = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT"];
+
+// Function to create pair selection keyboard
+function createPairKeyboard() {
+  return {
+    reply_markup: {
+      inline_keyboard: tradingPairs.map((pair) => [
+        { text: pair, callback_data: `pair_${pair}` },
+      ]),
+    },
+  };
+}
 
 // Function to fetch market data
 async function getMarketData(symbol) {
   try {
     const ticker = await exchange.fetchTicker(symbol);
-    const ohlcv = await exchange.fetchOHLCV(symbol, "1h", undefined, 24); // Last 24 hours of hourly data
+    const ohlcv = await exchange.fetchOHLCV(symbol, "1h", undefined, 24);
 
     return {
       symbol,
@@ -86,7 +96,9 @@ async function getMarketData(symbol) {
 // Function to analyze market data using Gemini
 async function analyzeMarketData(marketData) {
   const prompt = `
-    Analyze this crypto market data and provide a trading signal for futures trading:
+    youre an expert future traders that provides trading signals for futures trading.
+    as a future trading expert, your task is to analyze market data and provide trading signals for futures trading.
+    please analyze this crypto market data and provide a trading signal for futures trading:
     Symbol: ${marketData.symbol}
     Current Price: ${marketData.price}
     24h Change: ${marketData.change24h}%
@@ -125,16 +137,21 @@ async function analyzeMarketData(marketData) {
   }
 }
 
-// Function to generate and send trading signals
-async function generateTradingSignal(chatId) {
-  for (const pair of tradingPairs) {
-    const marketData = await getMarketData(pair);
-    if (!marketData) continue;
+// Function to generate and send trading signal for a specific pair
+async function generateTradingSignal(chatId, pair) {
+  const marketData = await getMarketData(pair);
+  if (!marketData) {
+    await bot.sendMessage(chatId, `❌ Error fetching data for ${pair}`);
+    return;
+  }
 
-    const analysis = await analyzeMarketData(marketData);
-    if (!analysis) continue;
+  const analysis = await analyzeMarketData(marketData);
+  if (!analysis) {
+    await bot.sendMessage(chatId, `❌ Error analyzing data for ${pair}`);
+    return;
+  }
 
-    const message = `
+  const message = `
 🚨 CRYPTO TRADING SIGNAL 🚨
 
 ${pair} Analysis:
@@ -143,8 +160,7 @@ ${analysis}
 ⚠️ Risk Disclaimer: This is AI-generated analysis. Always do your own research and trade responsibly.
 `;
 
-    await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
-  }
+  await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
 }
 
 // Bot commands
@@ -157,7 +173,7 @@ bot.onText(/\/start/, async (msg) => {
 Welcome to the Crypto Trading Signals Bot! 🤖
 
 Available commands:
-/signal - Get new trading signals
+/signal - Get trading signals (select a pair)
 /pairs - List monitored trading pairs
 /help - Show this help message
 
@@ -169,8 +185,27 @@ Note: This bot provides AI-generated trading signals. Always verify signals and 
 bot.onText(/\/signal/, async (msg) => {
   const chatId = msg.chat.id;
   console.log("✅ /signal command received from chat ID:", chatId);
-  await bot.sendMessage(chatId, "🔄 Generating trading signals...");
-  await generateTradingSignal(chatId);
+  await bot.sendMessage(
+    chatId,
+    "📊 Select a trading pair to analyze:",
+    createPairKeyboard()
+  );
+});
+
+// Handle callback queries for pair selection
+bot.on("callback_query", async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data.startsWith("pair_")) {
+    const selectedPair = data.replace("pair_", "");
+    await bot.answerCallbackQuery(callbackQuery.id);
+    await bot.sendMessage(
+      chatId,
+      `🔄 Generating trading signal for ${selectedPair}...`
+    );
+    await generateTradingSignal(chatId, selectedPair);
+  }
 });
 
 bot.onText(/\/pairs/, async (msg) => {
