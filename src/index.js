@@ -48,7 +48,7 @@ bot.on("polling_error", (error) => {
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 // Initialize exchange (using Binance as an example)
 const exchange = new ccxt.binance();
