@@ -51,7 +51,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 // Initialize exchange (using Binance as an example)
-const exchange = new ccxt.binance();
+const exchange = new ccxt.pro.bitget();
 
 // Available trading pairs
 const tradingPairs = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT"];
@@ -70,6 +70,7 @@ function createPairKeyboard() {
 // Function to fetch market data
 async function getMarketData(symbol) {
   try {
+    exchange.enableRateLimit = true;
     const ticker = await exchange.fetchTicker(symbol);
     const ohlcv = await exchange.fetchOHLCV(symbol, "1h", undefined, 24);
 
@@ -119,7 +120,7 @@ async function analyzeMarketData(marketData) {
       .join("\n")}
     
     Provide a concise trading signal with:
-    1. Position (LONG/SHORT)
+    1. Position (LONG/SHORT), and when to open the position
     2. Entry price
     3. Stop loss
     4. Take profit targets
